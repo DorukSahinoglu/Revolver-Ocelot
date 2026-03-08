@@ -54,5 +54,110 @@ def create_population(num_agents, n_nodes):
 
 agents = create_population(NUM_AGENTS, N)
 
-for i, a in enumerate(agents[:5]):
-    print(i, a.path)
+def get_available_nodes(agent, n_nodes):
+
+    visited = set(agent.path)
+
+    available = []
+
+    for node in range(n_nodes):
+
+        if node not in visited:
+
+            available.append(node)
+
+    return available
+
+
+def extend_agent(agent, n_nodes):
+
+    available = get_available_nodes(agent, n_nodes)
+
+    if not available:
+
+        return
+    
+    next_node = random.choice(available)
+
+    agent.path.append(next_node)
+
+def grow_agents(agents, n_nodes):
+
+    for agent in agents:
+
+        if agent.active:
+
+            extend_agent(agent, n_nodes)
+
+
+def get_edges(agent):
+
+    edges = set()
+
+    path = agent.path
+
+    for i in range(len(path) - 1):
+
+        a = path[i]
+        b = path[i + 1]
+
+        edge = tuple(sorted((a, b)))
+
+        edges.add(edge)
+
+    return edges
+
+
+def edge_similarity(a1, a2):
+
+    e1 = get_edges(a1)
+    e2 = get_edges(a2)
+
+    common = e1.intersection(e2)
+
+    return len(common)
+
+
+def should_merge(a1, a2, n_nodes):
+
+    threshold = max(1, int(nodes * 0.05))
+
+    common = edge_similarity(a1, a2)
+
+    return common >= threshold
+
+def two_opt(agent, dist):
+
+    path = agent.path[:]
+
+    best_cost = tour_cost(path, dist)
+
+    improved = True
+
+    while improved:
+
+        improved = False
+
+        for i in range(1, len(path) - 2):
+
+            for j in range(i + 1, len(path)):
+
+                if j - i == 1:
+
+                    continue
+                new_path = path[:]
+
+                new_path[i:j] = reversed(path[i:j])
+
+                new_cost = tour_cost(new_path, dist)
+
+                if new_cost < best_cost:
+
+                    path = new_path
+                    best_cost = new_cost
+                    improved = True
+
+        agent.path = path
+
+
+
