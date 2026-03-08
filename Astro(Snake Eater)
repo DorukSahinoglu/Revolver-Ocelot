@@ -1,17 +1,84 @@
 import random
 import math
 
-nodes = [(12,12), (23,12), (33,54)]
 
+
+nodes = [
+(565.0,575.0),
+(25.0,185.0),
+(345.0,750.0),
+(945.0,685.0),
+(845.0,655.0),
+(880.0,660.0),
+(25.0,230.0),
+(525.0,1000.0),
+(580.0,1175.0),
+(650.0,1130.0),
+(1605.0,620.0),
+(1220.0,580.0),
+(1465.0,200.0),
+(1530.0,5.0),
+(845.0,680.0),
+(725.0,370.0),
+(145.0,665.0),
+(415.0,635.0),
+(510.0,875.0),
+(560.0,365.0),
+(300.0,465.0),
+(520.0,585.0),
+(480.0,415.0),
+(835.0,625.0),
+(975.0,580.0),
+(1215.0,245.0),
+(1320.0,315.0),
+(1250.0,400.0),
+(660.0,180.0),
+(410.0,250.0),
+(420.0,555.0),
+(575.0,665.0),
+(1150.0,1160.0),
+(700.0,580.0),
+(685.0,595.0),
+(685.0,610.0),
+(770.0,610.0),
+(795.0,645.0),
+(720.0,635.0),
+(760.0,650.0),
+(475.0,960.0),
+(95.0,260.0),
+(875.0,920.0),
+(700.0,500.0),
+(555.0,815.0),
+(830.0,485.0),
+(1170.0,65.0),
+(830.0,610.0),
+(605.0,625.0),
+(595.0,360.0),
+(1340.0,725.0),
+(1740.0,245.0)
+]
 N = len(nodes)
+
+def tsp_distance(x1, y1, x2, y2):
+
+    dx = x1 - x2
+    dy = y1 - y2
+
+    return int(round(math.sqrt(dx*dx + dy*dy)))
 
 dist = [[0]*N for _ in range(N)]
 
 for i in range(N):
     for j in range(N):
+
         x1, y1 = nodes[i]
         x2, y2 = nodes[j]
-        dist[i][j] = math.sqrt((x1-x2)**2 + (y1-y2)**2)
+
+        dist[i][j] = tsp_distance(x1, y1, x2, y2)
+
+
+
+
 
 
 def tour_cost(tour, dist):
@@ -19,23 +86,39 @@ def tour_cost(tour, dist):
     cost = 0
     n = len(tour)
 
-    for i in range(n - 1):
-        cost += dist[tour[i]][tour[i + 1]]
+    for i in range(n-1):
+        cost += dist[tour[i]][tour[i+1]]
 
     cost += dist[tour[-1]][tour[0]]
 
     return cost
 
 
-NUM_AGENTS = 30
+def partial_cost(agent, dist):
+
+    path = agent.path
+
+    cost = 0
+
+    for i in range(len(path)-1):
+        cost += dist[path[i]][path[i+1]]
+
+    return cost
+
 
 
 class Agent:
 
     def __init__(self, start_node):
+
         self.path = [start_node]
         self.active = True
+        self.mass = 1
 
+
+
+
+NUM_AGENTS = 20
 
 def create_population(num_agents, n_nodes):
 
@@ -43,16 +126,15 @@ def create_population(num_agents, n_nodes):
 
     for _ in range(num_agents):
 
-        start = random.randint(0, n_nodes - 1)
+        start = random.randint(0, n_nodes-1)
 
-        agent = Agent(start)
-
-        agents.append(agent)
+        agents.append(Agent(start))
 
     return agents
 
 
 agents = create_population(NUM_AGENTS, N)
+
 
 def get_available_nodes(agent, n_nodes):
 
@@ -63,31 +145,48 @@ def get_available_nodes(agent, n_nodes):
     for node in range(n_nodes):
 
         if node not in visited:
-
             available.append(node)
 
     return available
 
 
-def extend_agent(agent, n_nodes):
+def extend_agent(agent, n_nodes, edge_force):
 
     available = get_available_nodes(agent, n_nodes)
 
     if not available:
-
         return
-    
-    next_node = random.choice(available)
+
+    current = agent.path[-1]
+
+    weights = []
+
+    for node in available:
+
+        edge = tuple(sorted((current, node)))
+
+        force = edge_force.get(edge, 0)
+
+        force = max(min(force, 20), -20)
+
+        weight = math.exp(force)
+
+        weights.append(weight)
+
+    next_node = random.choices(available, weights=weights)[0]
 
     agent.path.append(next_node)
 
-def grow_agents(agents, n_nodes):
+
+def grow_agents(agents, n_nodes, edge_force):
 
     for agent in agents:
 
         if agent.active:
 
-            extend_agent(agent, n_nodes)
+            extend_agent(agent, n_nodes, edge_force)
+
+
 
 
 def get_edges(agent):
@@ -96,12 +195,12 @@ def get_edges(agent):
 
     path = agent.path
 
-    for i in range(len(path) - 1):
+    for i in range(len(path)-1):
 
         a = path[i]
-        b = path[i + 1]
+        b = path[i+1]
 
-        edge = tuple(sorted((a, b)))
+        edge = tuple(sorted((a,b)))
 
         edges.add(edge)
 
@@ -113,18 +212,17 @@ def edge_similarity(a1, a2):
     e1 = get_edges(a1)
     e2 = get_edges(a2)
 
-    common = e1.intersection(e2)
-
-    return len(common)
+    return len(e1.intersection(e2))
 
 
 def should_merge(a1, a2, n_nodes):
 
-    threshold = max(1, int(nodes * 0.05))
+    threshold = max(10, int(n_nodes * 0.05))
 
     common = edge_similarity(a1, a2)
 
     return common >= threshold
+
 
 def two_opt(agent, dist):
 
@@ -138,13 +236,13 @@ def two_opt(agent, dist):
 
         improved = False
 
-        for i in range(1, len(path) - 2):
+        for i in range(1, len(path)-2):
 
-            for j in range(i + 1, len(path)):
+            for j in range(i+1, len(path)):
 
-                if j - i == 1:
-
+                if j-i == 1:
                     continue
+
                 new_path = path[:]
 
                 new_path[i:j] = reversed(path[i:j])
@@ -161,3 +259,190 @@ def two_opt(agent, dist):
 
 
 
+def merge_agents(a1, a2, dist):
+
+    two_opt(a1, dist)
+    two_opt(a2, dist)
+
+    cost1 = tour_cost(a1.path, dist)
+    cost2 = tour_cost(a2.path, dist)
+
+    if cost1 < cost2:
+        best_path = a1.path
+    else:
+        best_path = a2.path
+
+    new_agent = Agent(best_path[0])
+
+    new_agent.path = best_path[:]
+
+    new_agent.mass = a1.mass + a2.mass
+
+    a1.active = False
+    a2.active = False
+
+    return new_agent
+
+
+def check_merges(agents, n_nodes, dist):
+
+    new_agents = []
+
+    for i in range(len(agents)):
+
+        if not agents[i].active:
+            continue
+
+        for j in range(i+1, len(agents)):
+
+            if not agents[j].active:
+                continue
+
+            if should_merge(agents[i], agents[j], n_nodes):
+
+                merged = merge_agents(agents[i], agents[j], dist)
+
+                new_agents.append(merged)
+
+                break
+
+    agents.extend(new_agents)
+
+
+def agent_score(agent, dist):
+
+    if len(agent.path) <= 1:
+        return float('inf')
+
+    cost = partial_cost(agent, dist)
+
+    score = cost / (len(agent.path)-1)
+
+    return score
+
+
+def evaluate_agents(agents, dist):
+
+    scores = []
+
+    for agent in agents:
+
+        score = agent_score(agent, dist)
+
+        scores.append(score)
+
+    return scores
+
+
+
+
+def normalize_scores(scores):
+
+    valid = [s for s in scores if s != float('inf')]
+
+    if not valid:
+        return scores
+
+    min_s = min(valid)
+    max_s = max(valid)
+
+    norm_scores = []
+
+    for s in scores:
+
+        if s == float('inf'):
+            norm_scores.append(1.0)
+
+        else:
+
+            if max_s == min_s:
+                norm_scores.append(0.5)
+
+            else:
+                norm = (s-min_s)/(max_s-min_s)
+
+                norm_scores.append(norm)
+
+    return norm_scores
+
+
+
+
+def compute_edge_forces(agents, norm_scores):
+
+    edge_force = {}
+
+    avg = sum(norm_scores)/len(norm_scores)
+
+    alpha = 4
+
+    for agent, score in zip(agents, norm_scores):
+
+        edges = get_edges(agent)
+
+        delta = avg - score
+
+        force = (math.exp(alpha * delta) - 1) * agent.mass
+
+        for e in edges:
+
+            if e not in edge_force:
+                edge_force[e] = 0
+
+            edge_force[e] += force
+
+    return edge_force
+
+
+ITERATIONS = N-1
+
+for step in range(ITERATIONS):
+
+    scores = evaluate_agents(agents, dist)
+
+    norm_scores = normalize_scores(scores)
+
+    edge_force = compute_edge_forces(agents, norm_scores)
+
+    grow_agents(agents, N, edge_force)
+
+    check_merges(agents, N, dist)
+
+    print("Step:", step, "Active agents:", sum(a.active for a in agents))
+
+
+
+
+complete_agents = []
+
+for agent in agents:
+
+    if len(agent.path) == N:
+        complete_agents.append(agent)
+
+
+complete_agents.sort(key=lambda a: tour_cost(a.path, dist))
+
+TOP_K = min(30, len(complete_agents))
+
+for i in range(TOP_K):
+
+    two_opt(complete_agents[i], dist)
+
+
+
+best_cost = float('inf')
+best_path = None
+
+for agent in complete_agents:
+
+    cost = tour_cost(agent.path, dist)
+
+    if cost < best_cost:
+
+        best_cost = cost
+        best_path = agent.path
+
+
+print("Best path:", best_path)
+print("Best cost:", best_cost)
