@@ -1,0 +1,58 @@
+import random
+import math
+
+nodes = [(12,12), (23,12), (33,54)]
+
+N = len(nodes)
+
+dist = [[0]*N for _ in range(N)]
+
+for i in range(N):
+    for j in range(N):
+        x1, y1 = nodes[i]
+        x2, y2 = nodes[j]
+        dist[i][j] = math.sqrt((x1-x2)**2 + (y1-y2)**2)
+
+
+def tour_cost(tour, dist):
+
+    cost = 0
+    n = len(tour)
+
+    for i in range(n - 1):
+        cost += dist[tour[i]][tour[i + 1]]
+
+    cost += dist[tour[-1]][tour[0]]
+
+    return cost
+
+
+NUM_AGENTS = 30
+
+
+class Agent:
+
+    def __init__(self, start_node):
+        self.path = [start_node]
+        self.active = True
+
+
+def create_population(num_agents, n_nodes):
+
+    agents = []
+
+    for _ in range(num_agents):
+
+        start = random.randint(0, n_nodes - 1)
+
+        agent = Agent(start)
+
+        agents.append(agent)
+
+    return agents
+
+
+agents = create_population(NUM_AGENTS, N)
+
+for i, a in enumerate(agents[:5]):
+    print(i, a.path)
