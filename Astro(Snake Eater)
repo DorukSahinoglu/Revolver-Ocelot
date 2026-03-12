@@ -118,7 +118,7 @@ class Agent:
 
 
 
-NUM_AGENTS = 20
+NUM_AGENTS = 30
 
 def create_population(num_agents, n_nodes):
 
@@ -217,7 +217,7 @@ def edge_similarity(a1, a2):
 
 def should_merge(a1, a2, n_nodes):
 
-    threshold = max(10, int(n_nodes * 0.05))
+    threshold = max(10, int(n_nodes * 0.3))
 
     common = edge_similarity(a1, a2)
 
@@ -374,7 +374,7 @@ def compute_edge_forces(agents, norm_scores):
 
     avg = sum(norm_scores)/len(norm_scores)
 
-    alpha = 4
+    alpha = 3.2
 
     for agent, score in zip(agents, norm_scores):
 
@@ -394,7 +394,7 @@ def compute_edge_forces(agents, norm_scores):
     return edge_force
 
 
-ITERATIONS = N-1
+ITERATIONS = 400
 
 for step in range(ITERATIONS):
 
